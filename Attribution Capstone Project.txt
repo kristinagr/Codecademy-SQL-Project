@@ -1,0 +1,177 @@
+/* preparation: getting a feeling for the table */
+
+SELECT *
+FROM page_visits
+LIMIT 5;
+
+---
+
+/* task 1: number of utm_campaigns */
+
+SELECT COUNT(DISTINCT(utm_campaign)) AS '#_campaigns'
+FROM page_visits;
+
+---
+
+/* task 1: number of utm_sources */
+
+SELECT COUNT(DISTINCT(utm_source)) AS '#_sources'
+FROM page_visits;
+
+---
+
+/* task 1: relation between campaigns and sources */
+
+SELECT DISTINCT(utm_campaign), utm_source
+FROM page_visits;
+
+---
+
+/* task 2: pages on the website */
+
+SELECT DISTINCT(page_name)
+FROM page_visits;
+
+---
+
+/* task 3: number of first touches per campaign */
+
+WITH first_touch AS (
+    SELECT user_id,
+        MIN(timestamp) as first_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+    ft_attribution AS (
+SELECT ft.user_id,
+    ft.first_touch_at,
+    pv.utm_source,
+        pv.utm_campaign
+FROM first_touch ft
+JOIN page_visits pv
+    ON ft.user_id = pv.user_id
+    AND ft.first_touch_at = pv.timestamp)
+SELECT ft_attribution.utm_campaign AS campaign,
+COUNT(ft_attribution.first_touch_at) AS number_first_touch
+FROM ft_attribution
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+/* task 3: alternative query for number of first touches per campaign */
+
+WITH first_touches AS(
+SELECT user_id,
+        MIN(timestamp) AS first_touch_at,
+        utm_campaign AS CAMPAIGN
+    FROM page_visits
+    GROUP BY user_id)
+SELECT ft.utm_campaign,
+COUNT(*) AS number_first_touch
+FROM first_touches AS ft
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+/* task 4: number of last touches per campaign */
+
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) as last_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+    lt_attribution AS (
+SELECT lt.user_id,
+    lt.last_touch_at,
+    pv.utm_source,
+        pv.utm_campaign
+FROM last_touch lt
+JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp)
+SELECT lt_attribution.utm_campaign AS campaign,
+COUNT(lt_attribution.last_touch_at) AS number_last_touch
+FROM lt_attribution
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+/* task 4: alternative query for number of last touches per campaign */
+
+WITH last_touches AS (
+SELECT user_id,
+        MAX(timestamp),
+        utm_campaign
+    FROM page_visits
+    GROUP BY user_id)
+SELECT lt.utm_campaign AS campaign,
+COUNT(*) AS number_last_touches
+FROM last_touches AS lt
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+/* task 5: number of visitors who made a purchase */
+
+SELECT COUNT(DISTINCT(user_id)) AS number_purchases
+FROM page_visits
+WHERE page_name LIKE '%purchase';
+
+---
+
+/* task 6: number of last touches on the purchase page per campaign */
+
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) as last_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+    lt_attribution AS (
+SELECT lt.user_id,
+    lt.last_touch_at,
+    pv.utm_source,
+        pv.utm_campaign,
+      pv.page_name
+FROM last_touch lt
+JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp)
+SELECT lt_attribution.utm_campaign AS campaign,
+COUNT(lt_attribution.last_touch_at) AS number_last_touches
+FROM lt_attribution
+WHERE lt_attribution.page_name = '4 - purchase'
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+/* additional query for campaign optimization: number of first touches per page per campaign */
+
+WITH first_touch AS (
+    SELECT user_id,
+        MIN(timestamp) as first_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+    ft_attribution AS (
+SELECT ft.user_id,
+    ft.first_touch_at,
+    pv.utm_source,
+        pv.utm_campaign,
+      pv.page_name
+FROM first_touch ft
+JOIN page_visits pv
+    ON ft.user_id = pv.user_id
+    AND ft.first_touch_at = pv.timestamp)
+SELECT ft_attribution.utm_campaign AS campaign,
+COUNT(ft_attribution.first_touch_at) AS number_first_touch,
+ft_attribution.page_name AS page
+FROM ft_attribution
+GROUP BY 1
+ORDER BY 2;
+
+---
+
+END
